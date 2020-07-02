@@ -399,6 +399,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4543565843651837671}
   - component: {fileID: 6153516812288209078}
+  - component: {fileID: 3827696551376225918}
   m_Layer: 9
   m_Name: Arrow Tower
   m_TagString: Untagged
@@ -446,3 +447,19 @@ MonoBehaviour:
     type: 3}
   damage: 4
   projectileSpeed: 60
+--- !u!208 &3827696551376225918
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9118048415331323288}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 1
+  m_Extents: {x: 5, y: 3, z: 5}
+  m_MoveThreshold: 0.1
+  m_Carve: 1
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 3, z: 0}
+  m_TimeToStationary: 0.5
