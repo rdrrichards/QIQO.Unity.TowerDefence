@@ -10,6 +10,9 @@ public class Enemy : MonoBehaviour
 
     [Header("Stats")]
     public float maxHealth;
+    
+    public float healthGainPerLevel;
+
     [HideInInspector] public float health;
 
     [HideInInspector] public bool alive = true;
@@ -41,9 +44,16 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    public void Leak()
+    {
+        Player.remainingLives -= 1;
+        Destroy(gameObject);
+    }
+
     //Unity events:
     protected virtual void Start()
     {
+        maxHealth = maxHealth + (healthGainPerLevel * (Player.level - 1));
         health = maxHealth;
     }
 }

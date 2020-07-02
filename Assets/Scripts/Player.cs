@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AI;
 
 public class Player : MonoBehaviour
 {
@@ -15,6 +16,11 @@ public class Player : MonoBehaviour
     
     [Header("References")]
     public Transform trans;
+    public Transform spawnPoint;
+    public Transform leakPoint;
+    
+    [Tooltip("Reference to the sell button lock panel GameObject.")]
+    public GameObject sellButtonLockPanel;
 
     [Header("X Bounds")]
     public float minimumX = -70;
@@ -86,6 +92,50 @@ public class Player : MonoBehaviour
     private Tower selectedTower = null;
 
     private Dictionary<Vector3, Tower> towers = new Dictionary<Vector3, Tower>();
+
+    //Play Mode:
+    [Header("Play Mode")]
+    [Tooltip("Reference to the Build Button Panel to deactivate it when play mode starts.")]
+    public GameObject buildButtonPanel;
+
+    [Tooltip("Reference to the Game Lost Panel.")]
+    public GameObject gameLostPanel;
+
+    [Tooltip("Reference to the Text component for the info text in the Game Lost Panel.")]
+    public Text gameLostPanelInfoText;
+
+    [Tooltip("Reference to the Play Button GameObject to deactivate it in play mode.")]
+    public GameObject playButton;
+
+    [Tooltip("Reference to the Enemy Holder Transform.")]
+    public Transform enemyHolder;
+
+    [Tooltip("Reference to the ground enemy prefab.")]
+    public Enemy groundEnemyPrefab;
+
+    [Tooltip("Reference to the flying enemy prefab.")]
+    public Enemy flyingEnemyPrefab;
+
+    [Tooltip("Time in seconds between each enemy spawning.")]
+    public float enemySpawnRate = .35f;
+
+    [Tooltip("Determines how often flying enemy levels occur.  For example if this is set to 4, every 4th level is a flying level.")]
+    public int flyingLevelInterval = 4;
+
+    [Tooltip("Number of enemies spawned each level.")]
+    public int enemiesPerLevel = 15;
+
+    [Tooltip("Gold given to the player at the end of each level.")]
+    public int goldRewardPerLevel = 12;
+
+    //The current level.
+    public static int level = 1;
+
+    //Number of enemies spawned so far for this level.
+    private int enemiesSpawnedThisLevel = 0;
+
+    //Player's number of remaining lives; once it hits 0, the game is over:
+    public static int remainingLives = 40;
 
     //Methods:
     void ArrowKeyMovement()
@@ -316,7 +366,10 @@ public class Player : MonoBehaviour
         }
     }
 
-    void UpdateEnemyPath() {}
+    void UpdateEnemyPath()
+    {
+        Invoke("PerformPathfinding",.1f);
+    }
 
     void BuildModeLogic()
     {
@@ -359,10 +412,112 @@ public class Player : MonoBehaviour
         clickedButtonImage.color = selectedBuildButtonColor;
     }
 
+    void PerformPathfinding()
+    {
+        //Pathfind from spawn point to leak point, storing the result in GroundEnemy.path:
+        NavMesh.CalculatePath(spawnPoint.position, leakPoint.position, NavMesh.AllAreas, GroundEnemy.path);
+        
+        if (GroundEnemy.path.status == NavMeshPathStatus.PathComplete)
+        {
+            //If the path was successfully found, make sure the lock panel is inactive:
+            sellButtonLockPanel.SetActive(false);
+        }
+        else //If the path is blocked,
+        {
+            //Activate the lock panel:
+            sellButtonLockPanel.SetActive(true);
+        }
+    }
+    
+    void SpawnEnemy()
+    {   
+        Enemy enemy = null;
+        
+        //If this is a flying level
+        if (level % flyingLevelInterval == 0)
+        {
+            enemy = Instantiate(flyingEnemyPrefab,spawnPoint.position + (Vector3.up * 18),Quaternion.LookRotation(Vector3.back));
+        }
+        else //If it's a ground level
+        {
+            enemy = Instantiate(groundEnemyPrefab,spawnPoint.position,Quaternion.LookRotation(Vector3.back));
+        }
+
+        //Parent enemy to the enemy holder:
+        enemy.trans.SetParent(enemyHolder);
+
+        //Count that we spawned the enemy:
+        enemiesSpawnedThisLevel += 1;
+
+        //Stop invoking if we've spawned all enemies:
+        if (enemiesSpawnedThisLevel >= enemiesPerLevel)
+        {
+            CancelInvoke("SpawnEnemy");
+        }
+    }
+
+    public void PlayModeLogic()
+    {
+        //If no enemies are left and all enemies have already spawned
+        if (enemyHolder.childCount == 0 && enemiesSpawnedThisLevel >= enemiesPerLevel)
+        {
+            //Return to build mode if we haven't lost yet:
+            if (remainingLives > 0)
+                GoToBuildMode();
+            else
+            {
+                //Update game lost panel text with information:
+                gameLostPanelInfoText.text = "You had " + remainingLives + " lives by the end and made it to level " + level + ".";
+                
+                //Activate the game lost panel:
+                gameLostPanel.SetActive(true);
+            }
+        }
+    }
+
+    void GoToPlayMode()
+    {
+        mode = Mode.Play;
+        
+        //Deactivate build button panel and play button:
+        buildButtonPanel.SetActive(false);
+        playButton.SetActive(false);
+
+        //Deactivate highlighter:
+        highlighter.gameObject.SetActive(false);
+    }
+
+    void GoToBuildMode()
+    {
+        mode = Mode.Build;
+
+        //Activate build button panel and play button:
+        buildButtonPanel.SetActive(true);
+        playButton.SetActive(true);
+
+        //Reset enemies spawned:
+        enemiesSpawnedThisLevel = 0;
+        
+        //Increase level:
+        level += 1;
+        gold += goldRewardPerLevel;
+    }
+
+    public void StartLevel()
+    {
+        //Switch to play mode:
+        GoToPlayMode();
+
+        //Repeatedly invoke SpawnEnemy:
+        InvokeRepeating("SpawnEnemy",.5f,enemySpawnRate);
+    }
+
     //Unity events:
     void Start()
     {
         targetPosition = trans.position;
+        GroundEnemy.path = new NavMeshPath();
+        UpdateEnemyPath();
     }
     
     void Update()
@@ -378,5 +533,7 @@ public class Player : MonoBehaviour
         //Run build mode logic if we're in build mode:
         if (mode == Mode.Build)
             BuildModeLogic();
+        else
+            PlayModeLogic();
     }
 }
