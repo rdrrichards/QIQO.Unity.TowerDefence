@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class FiringTower : TargetingTower
 {
+    [Tooltip("Can the tower attack flying enemies?")]
+    public bool canAttackFlying = true;
+    
     [Tooltip("Quick reference to the root Transform of the tower.")]
     public Transform trans;
 
@@ -79,15 +82,19 @@ public class FiringTower : TargetingTower
             }
             else //If the enemy is alive and in range,
             {
-                //Aim at the enemy:
-                AimAtTarget();
-                
-                //Check if it's time to fire again:
-                if (Time.time > lastFireTime + fireInterval)
+                if (canAttackFlying || targetedEnemy is GroundEnemy)
                 {
-                    Fire();
+                    //Aim at the enemy:
+                    AimAtTarget();
+                    
+                    //Check if it's time to fire again:
+                    if (Time.time > lastFireTime + fireInterval)
+                    {
+                        Fire();
+                    }
                 }
             }
+
         }
         //Else if there is no targeted enemy and there are targets available
         else if (targeter.TargetsAreAvailable)
